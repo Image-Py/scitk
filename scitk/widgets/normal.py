@@ -1,5 +1,6 @@
 # import wx, platform
 import numpy as np
+import re
 import tkinter as tk
 # from tkinter import ttk
 import ttkbootstrap as ttk
@@ -12,6 +13,20 @@ from tkinter import colorchooser
 # style = ttk.Style()
 # style.configure('Padded.TEntry', padding=0)
 
+class ParaCtrl(ttk.Frame):
+    def __init__(self, parent, command=print, **key):
+        super().__init__(parent, **key)
+        self.command = command
+        self.prefix = self.postfix = None
+
+    def get(self): pass
+    def set(self, value): pass
+    def valid(self): return True
+    def config(self, **key):
+        if 'command' in key: 
+            self.command = key.pop('command')
+        super().config(**key)
+
 class Checkbutton(ttk.Checkbutton):
     def __init__(self, frame, *p, **key):
         self.value = tk.BooleanVar()
@@ -21,10 +36,10 @@ class Checkbutton(ttk.Checkbutton):
 
     def get(self): return self.value.get()
     
-class NumCtrl(ttk.Frame):
+class NumCtrl(ParaCtrl):
     """NumCtrl: derived from tk.Entry"""
-    def __init__(self, parent, rang, accury, title, unit, app=None):
-        ttk.Frame.__init__(self, parent)
+    def __init__(self, parent, rang, accury, title, unit, command=None, app=None):
+        super().__init__(parent, command)
         self.prefix = ttk.Label(self, text=title)
         self.prefix.pack(side="left", padx=5)
         self.ctrl = ttk.Entry(self, width=5)
@@ -38,35 +53,34 @@ class NumCtrl(ttk.Frame):
         self.pack(pady=5, fill='x')
     
     def ontext(self, event):
-        if self.get() is None:
-            self.ctrl.config(bootstyle='danger')
-            self.event_generate("<<ParameterEvent>>", state=0)
-            # self.ctrl.config(bg="#FFFF00")  # set background color to yellow
-        else:
-            self.ctrl.config(bootstyle="default")  # set background color to white
-            self.event_generate("<<ParameterEvent>>", state=1)
-        
-    def set(self, n):
-        if self.accury > 0:
-            self.ctrl.insert(0, str(round(n, self.accury)))
-        else:
-            self.ctrl.insert(0, str(int(n)))
+        style = ('danger', 'default')[self.valid()]
+        self.ctrl.config(bootstyle=style)
+        if self.command: self.command()
         
     def get(self):
+        if not self.valid(): return None
+        return (int, float)[self.accury>0](self.ctrl.get())
+
+    def set(self, n):
+        self.ctrl.delete(0, 'end')
+        self.ctrl.insert(0, str(n))
+        
+    def valid(self):
         sval = self.ctrl.get()
         try:
             num = float(sval) if self.accury > 0 else int(sval)
         except ValueError:
-            return None
+            return False
         if num < self.min or num > self.max:
-            return None
+            return False
         if abs(round(num, self.accury) - num) > 1E-5:
-            return None
-        return num
+            return False
+        return True
 
-class TextCtrl(ttk.Frame):
-    def __init__(self, parent, title, unit, app=None):
-        ttk.Frame.__init__(self, parent)
+
+class TextCtrl(ParaCtrl):
+    def __init__(self, parent, title, unit, command=None, app=None):
+        super().__init__(parent, command)
         
         self.prefix = ttk.Label(self, text=title)
         self.prefix.pack(side="left", padx=5)
@@ -78,7 +92,7 @@ class TextCtrl(ttk.Frame):
         self.pack(pady=5, fill='x')
         
     def ontext(self, event):
-        self.event_generate("<<ParameterEvent>>", state=1)
+        if self.command: self.command()
         
     def set(self, n):
         self.ctrl.delete(0, 'end')
@@ -87,9 +101,9 @@ class TextCtrl(ttk.Frame):
     def get(self):
         return self.ctrl.get()
     
-class ColorCtrl(ttk.Frame):
-    def __init__(self, parent, title, unit, app=None):
-        ttk.Frame.__init__(self, parent)
+class ColorCtrl(ParaCtrl):
+    def __init__(self, parent, title, unit, command=None, app=None):
+        super().__init__(parent, command)
         
         self.prefix = ttk.Label(self, text=title)
         self.prefix.pack(side="left", padx=5)
@@ -108,25 +122,24 @@ class ColorCtrl(ttk.Frame):
         
     def ontext(self, event):
         # self.f(self)
-        try:
-            color = str(self.ctrl.get())
-            self.colorbox.config(bg=color)
-            self.ctrl.config(bootstyle='default')
-            self.event_generate("<<ParameterEvent>>", state=1)
-        except:
-            self.ctrl.config(bootstyle='danger')
-            self.event_generate("<<ParameterEvent>>", state=0)
+        if self.valid(): self.colorbox.config(bg=self.ctrl.get())
+        self.ctrl.config(bootstyle=('danger', 'default')[self.valid()])
+        if self.command: self.command()
             
+    def valid(self):
+        pattern = r'^#[a-fA-F0-9]{6}$'
+        return not re.match(pattern, self.ctrl.get()) is None
+
     def oncolor(self, event):
         color = tk.colorchooser.askcolor()
         if color[1]:
             self.colorbox.config(bg=color[1])
-            self.ctrl.delete(0, tk.END)
+            self.ctrl.delete(0, 'end')
             self.ctrl.insert(0, color[1])
-            self.event_generate("<<ParameterEvent>>", state=1)
+            if self.command: self.command()
     
     def set(self, color):
-        color = "#{:02x}{:02x}{:02x}".format(*color)
+        color = '#%.2x%.2x%.2x'%(color)
         self.colorbox.config(bg=color)
         self.ctrl.delete(0, tk.END)
         self.ctrl.insert(0, color)
@@ -136,9 +149,9 @@ class ColorCtrl(ttk.Frame):
         return int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
     
 
-class Choice(ttk.Frame):
-    def __init__(self, parent, choices, tp, title, unit, app=None):
-        ttk.Frame.__init__(self, parent)
+class Choice(ParaCtrl):
+    def __init__(self, parent, choices, tp, title, unit, command=None, app=None):
+        super().__init__(parent, command)
         self.tp, self.choices = tp, choices
         
         self.prefix = ttk.Label(self, text=title)
@@ -146,6 +159,7 @@ class Choice(ttk.Frame):
         
         self.ctrl = ttk.Combobox(self, values=choices, width=5)
         self.ctrl.pack(side=tk.LEFT, fill='x', expand=True)
+        self.ctrl.bind('<<ComboboxSelected>>', self.on_choice)
         
         self.postfix = tk.Label(self, text=unit)
         self.postfix.pack(side=tk.LEFT, padx=5)
@@ -153,22 +167,16 @@ class Choice(ttk.Frame):
         self.pack(pady=5, fill='x')
         
     def on_choice(self, *args):
-        if hasattr(self, 'f'):
-            self.f(self)
-    
-    def bind(self, f):
-        self.f = f
+        if self.command: self.command()
         
     def set(self, x):
-        if x in self.choices:
-            self.ctrl.set(x)
+        if x in self.choices: self.ctrl.set(x)
         
-    def get(self):
-        return self.tp(self.ctrl.get())
+    def get(self): return self.tp(self.ctrl.get())
 
-class Label(ttk.Frame):
-    def __init__(self, parent, title, app=None):
-        ttk.Frame.__init__(self, parent)
+class Label(ParaCtrl):
+    def __init__(self, parent, title, command=None, app=None):
+        super().__init__(parent, None)
         self.lab_title = tk.Label(self, text=title, justify="left")
         self.lab_title.pack(side=tk.TOP, padx=5, pady=5, anchor="w")
         self.pack(pady=5, fill='x')
@@ -184,15 +192,16 @@ class Label(ttk.Frame):
 
 from ttkbootstrap.scrolled import ScrolledFrame
 
-class Choices(ttk.Labelframe):
-    def __init__(self, parent, choices, title, app=None):
+class Choices(ParaCtrl):
+    def __init__(self, parent, choices, title, command=None, app=None):
         self.choices = list(choices)
+        super().__init__(parent, command)
         ttk.Labelframe.__init__(self, parent, text=title)
         self.ctrl = ScrolledFrame(self, width=0, height=100)
         # self.ctrl = ttk.Listbox(self.sizer, selectmode=tk.MULTIPLE)
         self.ctrls = []
         for choice in choices:
-            btn = Checkbutton(self.ctrl, text=choice)
+            btn = Checkbutton(self.ctrl, text=choice, command=lambda:self.on_check(None))
             btn.pack(side=tk.BOTTOM, fill=tk.X, pady=3)
             self.ctrls.append(btn)
             
@@ -200,11 +209,8 @@ class Choices(ttk.Labelframe):
         self.ctrl.bind("<ButtonRelease-1>", self.on_check)
         self.pack(pady=5, padx=5, fill='x')
 
-    def bind(self, z, f):
-        self.f = f
-
     def on_check(self, event):
-        self.f(self)
+        if self.command: self.command()
 
     def get(self):
         return [i for i,j in zip(self.choices, self.ctrls) if j.get()]
@@ -213,25 +219,25 @@ class Choices(ttk.Labelframe):
         for i in range(len(self.choices)):
             self.ctrls[i].set(self.choices[i] in value)
 
-class Check(ttk.Frame):
-    def __init__(self, parent, title, app=None):
-        ttk.Frame.__init__(self, parent)
+class Check(ParaCtrl):
+    def __init__(self, parent, title, command=None, app=None):
+        super().__init__(parent, command)
         self.value = tk.BooleanVar()    
-        self.ctrl = Checkbutton(self, text=title)
+        self.ctrl = Checkbutton(self, text=title, command=self.on_check)
 
         self.ctrl.pack(side=tk.TOP, padx=5, pady=5, anchor="w")
-        self.ctrl.invoke()
+        self.ctrl.set(True)
         self.pack(pady=5, fill='x')
-        self.set = self.ctrl.set
         self.get = self.ctrl.get
+        self.set = self.ctrl.set
         
-    def bind(self, z, f):
-        pass
+    def on_check(self, *args):
+        if self.command: self.command()
 
-class FloatSlider(ttk.Frame):
+class FloatSlider(ParaCtrl):
     """NumCtrl: derived from tk.Entry"""
-    def __init__(self, parent, rang, accury, title, unit, app=None):
-        ttk.Frame.__init__(self, parent)
+    def __init__(self, parent, rang, accury, title, unit, command=None, app=None):
+        super().__init__(parent, command)
         self.scale = ttk.Scale(self, from_=rang[0], to=rang[1])
         self.scale.pack(side='top', padx=5, pady=3, fill='x')
         self.scale.config(command=self.onscale)
@@ -254,78 +260,76 @@ class FloatSlider(ttk.Frame):
         self.pack(pady=5, fill='x')
 
     def onscale(self, event):
-        self.ctrl.delete(0, "end")  # 清空现有的文本
-        self.ctrl.insert(0, round(self.scale.get(), self.accury))
+        self.ctrl.delete(0, "end")
+        value = round(self.scale.get(), self.accury)
+        value = (int, float)[self.accury>0](value)
+        self.ctrl.insert(0, str(value))
+        if self.command: self.command()
 
     def ontext(self, event):
-        if self.get() is None:
-            self.ctrl.config(bootstyle='danger')
-            # self.ctrl.config(bg="#FFFF00")  # set background color to yellow
-        else:
-            self.scale.set(self.get())
-            self.ctrl.config(bootstyle="default")  # set background color to white
-        
+        style = ('danger', 'default')[self.valid()]
+        self.ctrl.config(bootstyle=style)
+        if self.valid(): self.scale.set(self.get())
+    
     def set(self, n):
+        self.ctrl.delete(0, "end")
         if self.accury > 0:
             self.ctrl.insert(0, str(round(n, self.accury)))
-        else:
-            self.ctrl.insert(0, str(int(n)))
+        else: self.ctrl.insert(0, str(int(round(n))))
+        # self.scale.config(command=None)
+        command, self.command = self.command, None
+        self.scale.set(n)
+        self.command = command
+        # self.scale.config(command=self.onscale)
         
-    def get(self):
+    def valid(self):
         sval = self.ctrl.get()
         try:
             num = float(sval) if self.accury > 0 else int(sval)
         except ValueError:
-            return None
+            return False
         if num < self.min or num > self.max:
-            return None
+            return False
         if abs(round(num, self.accury) - num) > 1E-5:
-            return None
-        return num
-    
-'''
-class PathCtrl(wx.Panel):
-    def __init__(self, parent, filt, io, title, app=None):
-        wx.Panel.__init__(self, parent)
-        sizer = wx.BoxSizer( wx.HORIZONTAL )
-        self.prefix = lab_title = wx.StaticText( self, wx.ID_ANY, title,
-                                   wx.DefaultPosition, wx.DefaultSize)
-        self.filt, self.io = filt, io
-        lab_title.Wrap( -1 )
-        sizer.Add( lab_title, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
-        self.ctrl = wx.TextCtrl(self, wx.TE_RIGHT)
-        sizer.Add( self.ctrl, 2, wx.ALL, 5 )
-        self.SetSizer(sizer)
-        
-        self.ctrl.Bind(wx.EVT_KEY_UP, self.ontext)
-        self.ctrl.Bind( wx.EVT_LEFT_DCLICK, self.onselect)
-        
-    def Bind(self, z, f): self.f = f
-        
-    def ontext(self, event): 
-        self.f(self)
-        
-    def onselect(self, event):
-        if isinstance(self.filt, str): self.filt = self.filt.split(',')
-        filt = '|'.join(['%s files (*.%s)|*.%s'%(i.upper(),i,i) for i in self.filt])
-        dic = {'open':wx.FD_OPEN, 'save':wx.FD_SAVE}
-        if self.io=='folder':
-            dialog = wx.DirDialog(self, 'Path Select', '', wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST | wx.FD_CHANGE_DIR)
-        else: dialog = wx.FileDialog(self, 'Path Select', '', '.', filt, dic[self.io] | wx.FD_CHANGE_DIR)
+            return False
+        return True
 
-        rst = dialog.ShowModal()
-        if rst == wx.ID_OK:
-            path = dialog.GetPath()
-            self.ctrl.SetValue(path)
-            self.f(self)
-        dialog.Destroy()
+    def get(self):
+        if self.valid() is None: return None
+        return (int, float)[self.accury>0](self.ctrl.get())
+
+from tkinter.filedialog import askdirectory, askopenfile, asksaveasfile
+
+class PathCtrl(ParaCtrl):
+    """NumCtrl: derived from tk.Entry"""
+    def __init__(self, parent, filt, io, title, command=None, app=None):
+        super().__init__(parent, command)
+        self.filt, self.io = filt, io
+        self.prefix = ttk.Label(self, text=title)
+        self.prefix.pack(side="left", padx=5)
+        self.ctrl = ttk.Entry(self, width=30)
+        self.ctrl.pack(side="left", fill='x', expand=True)
+        self.btn = ttk.Button(self, text='...', command=self.onselect)
+        self.btn.pack(side="left", padx=5)
+        self.pack(pady=5, fill='x')
         
-    def SetValue(self, value):
-        self.ctrl.SetValue(value)
+    def onselect(self):
+        if isinstance(self.filt, str): self.filt = self.filt.split(',')
+        filt = [('%s files'%i, '*.%s'%i) for i in self.filt]
+
+        dic = {'open':askopenfile, 'save':asksaveasfile, 'folder': askdirectory}
+        if self.io == 'folder': path = askdirectory()
+        else: path = dic[self.io](filetypes=filt)
+        if path: self.set(path if isinstance(path, str) else path.name)
         
-    def GetValue(self):
-        return self.ctrl.GetValue()
+    def set(self, value):
+        self.ctrl.delete(0, "end")
+        self.ctrl.insert(0, value)
         
+    def get(self):
+        return self.ctrl.get()
+        
+'''
 class AnyType( wx.Panel ):
     def __init__( self, parent, title, app=None):
         wx.Panel.__init__ ( self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size(-1, -1), style = wx.TAB_TRAVERSAL )
@@ -406,4 +410,6 @@ if __name__ == '__main__':
     Label(frame, 'I am a lable')
     Check(frame, 'I am a check')
     FloatSlider(frame, (0,10), 1, 'Age', 'float')
+    PathCtrl(frame, 'txt', 'open', 'Open')
+    frame.bind('<<ParameterEvent>>', print)
     app.mainloop() 

@@ -21,7 +21,7 @@ ellipses = {'type':'ellipses', 'color':(255,0,0), 'fcolor':(255,255,0), 'fill':F
 rectangle = {'type':'rectangle', 'color':(255,0,0), 'fcolor':(255,255,0), 'fill':True, 'body':(100,100,80,50)}
 rectangles = {'type':'rectangles', 'fcolor':(255,255,0), 'fill':False, 'body':[(100,100,80,50),(200,200,80,100)]}
 text = {'type':'text', 'color':(255,0,0), 'fcolor':(0,0,0), 'lw':8, 'fill':True, 'body':(100,200,'id=0')}
-texts = {'type':'texts', 'color':(255,0,0), 'fcolor':(0,0,0), 'lw':8, 'fill':True, 'body':[(100,200,'id=0'),(180,250,'id=1')]}
+texts = {'type':'texts', 'color':(255,0,255), 'fcolor':(0,0,0), 'lw':8, 'fill':False, 'body':[(100,200,'id=0'),(180,250,'id=1')]}
 
 layer = {'type':'layer', 'num':-1, 'color':(255,255,0), 'fcolor':(255,255,255), 'fill':False, 
 			'body':[point, points, line, lines, polygon, polygons, circle, circles, ellipse, ellipses, rectangle, rectangles, text, texts]}
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     #mark_test(points)
     #mark_test(line)
     #mark_test(lines)
-    #mark_test(polygon)
+    mark_test(polygon)
     #mark_test(polygons)
     #mark_test(circle)
     #mark_test(circles)
@@ -57,5 +57,4 @@ if __name__ == '__main__':
     #mark_test(text)
     #mark_test(texts)
     #mark_test(layer)
-    mark_test(layers)
     app.mainloop()

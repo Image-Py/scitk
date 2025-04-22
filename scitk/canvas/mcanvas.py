@@ -28,6 +28,7 @@ class ICanvas(Canvas):
         if b and self.images[0].back: 
             self.images[0].back.reset()
         self.update_box()
+        # print('set image update')
         self.update()
 
     def set_log(self, log, b=False):

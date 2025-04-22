@@ -1,7 +1,7 @@
 import numpy as np
 import tkinter as tk
 from sciapp.util.imgutil import mix_img, cross, multiply, merge, lay, mat, like
-from scitk.canvas.mark import drawmark
+from .mark import drawmark
 from sciapp.object import Image, Shape, mark2shp, Layer, json2shp
 from sciapp.action import Tool, ImageTool, ShapeTool
 from time import time
@@ -67,7 +67,8 @@ class Canvas (tk.Canvas):
         if (ld+rd+md)>0 and btn!='??':
             tool.mouse_up(obj, x, y, btn, **others)
         if btn == '??':
-            tool.mouse_move(obj, x, y, btn, **others)
+            b = [0, ld, md, rd].index(True) if True in (ld, md, rd) else None
+            tool.mouse_move(obj, x, y, b, **others)
 
         wheel = np.sign(me.delta)
         
@@ -97,7 +98,7 @@ class Canvas (tk.Canvas):
         else: i = min((c-a)*0.9/oriw, (d-b)*0.9/orih)
         self.zoom(i, 0, 0)
         lay(self.winbox, self.conbox)
-        self.update()
+        # self.update()
 
     def update_box(self):
         box = [1e10, 1e10, -1e10, -1e10]
@@ -151,6 +152,7 @@ class Canvas (tk.Canvas):
 
         
     def update(self, counter = [0,0]):
+        #print('update >>>>>>>>>>>>>')
         #self.update_box()
         #if self.conbox[2] - self.conbox[0]>1: self.update_box()
 
@@ -159,6 +161,7 @@ class Canvas (tk.Canvas):
         
         if self.first and self.conbox[2] - self.conbox[0]>1:
             self.first = False
+            print('first >>>>>>>>>>')
             return self.fit()
         
         counter[0] += 1
@@ -168,13 +171,15 @@ class Canvas (tk.Canvas):
         #dc.SetBackground(wx.Brush((255,255,255)))
         
         self.delete('all') # dc.Clear()
+
+        #print('delete ==============')
         del self.buffer[:]
         
         for i in self.images: 
             if i.img is None: continue
             self.draw_image(dc, i, i.back, 0)
         
-        for i in self.marks.values():
+        for k, i in self.marks.items():
             if i is None: continue
             if callable(i):
                 i(dc, self.to_panel_coor, k=self.scale, cur=0,
@@ -182,6 +187,7 @@ class Canvas (tk.Canvas):
             else:
                 drawmark(dc, self.to_panel_coor, i, k=self.scale, cur=0,
                     winbox=self.winbox, oribox=self.oribox, conbox=self.conbox)
+        #print('end ========================')
         # dc.UnMask()
         
         
@@ -213,12 +219,12 @@ class Canvas (tk.Canvas):
 
     def idle_loop(self):
         self.on_idle(self)
-        self.after(100, self.idle_loop)
+        self.after(20, self.idle_loop)
 
     def on_size(self, event):
-        print('size')
+        # print('size')
         size = self.winfo_width(), self.winfo_height()
-        print(size)
+        # print(size)
         if max(size)>20: # and self.images[0].img is not None:
             self.initBuffer()
         return self.update()
@@ -258,6 +264,7 @@ class Canvas (tk.Canvas):
         lay(self.winbox, self.conbox)
         top_level = self.winfo_toplevel()
         self.pack()
+        self.update_idletasks()
         # top_level.geometry('') 
         # op_level.pack()
         
@@ -337,7 +344,7 @@ if __name__=='__main__':
 
     app = tk.Tk()
     frame = app; app.title('Canvas')
-    canvas = Canvas(frame, autofit=False, ingrade=True, up=False)
+    canvas = Canvas(frame, autofit=True, ingrade=True, up=False)
 
     image = Image()
     image.img = camera()

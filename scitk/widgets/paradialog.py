@@ -4,11 +4,11 @@ from .normal import *
 #from .advanced import *
 #from .histpanel import HistPanel
 #from .curvepanel import CurvePanel
-#from .threpanel import ThresholdPanel
+from .threpanel import ThresholdPanel
 
-widgets = { 'ctrl':None, 'slide':FloatSlider, int:NumCtrl, 'path':'PathCtrl',
+widgets = { 'ctrl':None, 'slide':FloatSlider, int:NumCtrl, 'path':PathCtrl,
             float:NumCtrl, 'lab':Label, bool:Check, str:TextCtrl, list:Choice,
-            'color':ColorCtrl, 'cmap':'CMapSelPanel', 'any':'AnyType', 'chos':Choices, 'hist':'ThresholdPanel',
+            'color':ColorCtrl, 'cmap':'CMapSelPanel', 'any':'AnyType', 'chos':Choices, 'hist':ThresholdPanel,
             'curve':'CurvePanel', 'img':'ImageList', 'tab':'TableList', 'field':'TableField', 'fields':'TableFields'}
 
 def add_widget(key, value): widgets[key] = value
@@ -24,6 +24,7 @@ class ParaDialog(ttk.Toplevel):
         self.para = {}
         self.modal = True
         self.status = None
+        self.sender = None
         # super().bind("<Configure>", lambda e: self.on_pack())
         self.after(100, self.pack)
         super().bind('<<ParameterEvent>>', self.para_changed)
@@ -31,9 +32,9 @@ class ParaDialog(ttk.Toplevel):
     def commit(self, state):
         self.status = state == 'ok'
         if state == 'ok' and self.on_ok:
-            self.on_ok()
+            if not self.modal: self.on_ok()
         elif state == 'cancel' and self.on_cancel:
-            self.on_cancel()
+            if not self.modal: self.on_cancel()
         self.destroy()
 
     def add_confirm(self, modal):
@@ -49,6 +50,11 @@ class ParaDialog(ttk.Toplevel):
         self.btn_help.pack(side='left', padx=5, pady=5)
         frame.pack(fill='x')
 
+    def command(self, key): 
+        # print(key, '>>>>>>>>>>>>>>>>>>')
+        self.sender = key
+        self.event_generate("<<ParameterEvent>>")
+
     def init_view(self, items, para, preview=False, modal=True, app=None):
         self.para = para
         self.modal = modal
@@ -61,7 +67,7 @@ class ParaDialog(ttk.Toplevel):
             if p in para:
                 para[p] = self.ctrl_dic[p].get()
         self.add_confirm(modal)
-        
+        self.update()
 
     def OnDestroy(self):
         self.handle = print
@@ -72,10 +78,10 @@ class ParaDialog(ttk.Toplevel):
         self.add_ctrl_(widgets[para[0]], *para[1:])
 
     def add_ctrl_(self, Ctrl, key, p, app=None):
-        ctrl = Ctrl(self, *p, app=app)
+        # print(p, '============')
+        ctrl = Ctrl(self, *p, command=lambda key=key: self.command(key), app=app)
 
-        if p[0] is not None:
-            self.ctrl_dic[key] = ctrl
+        if p[0] is not None: self.ctrl_dic[key] = ctrl
         # if hasattr(ctrl, 'bind'):
         pre = ctrl.prefix if hasattr(ctrl, 'prefix') else None
         post = ctrl.postfix if hasattr(ctrl, 'postfix') else None
@@ -99,20 +105,24 @@ class ParaDialog(ttk.Toplevel):
     def para_check(self, para, key):
         pass
 
+    def valid(self):
+        for p in self.ctrl_dic:
+            if not self.ctrl_dic[p].valid():
+                return False
+        return True
+
     def para_changed(self, event):
         # print('parameter changed', event.state, event.widget)
-        if event.state==0:
+        if not self.valid():
             return self.btn_ok.config(state='disable')
         else: self.btn_ok.config(state='normal')
 
-        obj = event.widget
-        key = ''
+        # obj = event.widget
+        key = self.sender
         para = self.para
         for p in self.ctrl_dic:
             if p in para:
                 para[p] = self.ctrl_dic[p].get()
-            if self.ctrl_dic[p] == event.widget:
-                key = p
         
         self.para_check(para, key)
         if 'preview' not in self.ctrl_dic: return
@@ -123,8 +133,7 @@ class ParaDialog(ttk.Toplevel):
         self.handle(para)
 
     def reset(self, para=None):
-        if para is not None:
-            self.para = para
+        if para is not None: self.para = para
         for p in self.para.keys():
             if p in self.ctrl_dic:
                 self.ctrl_dic[p].set(self.para[p])
@@ -164,7 +173,7 @@ def get_para(para, view, title='Parameter', parent=None):
     return rst == 5100
 
 if __name__ == '__main__':
-    para = {'name':'yxdragon', 'age':10, 'h':1.72, 'w':70, 'sport':True, 'sys':'Mac', 'lan':['C/C++', 'Python'], 'c':(255,0,0)} 
+    para = {'name':'yxdragon', 'age':10, 'h':1.72, 'w':70, 'sport':False, 'sys':'Mac', 'lan':['C/C++', 'Python'], 'c':(255,0,0)} 
 
     view = [('lab', 'lab', 'This is a questionnaire'),
             (str, 'name', 'name', 'please'), 

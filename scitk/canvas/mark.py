@@ -36,9 +36,12 @@ def cross(ori, cont, win, cell):
     return max(int(l ** 0.5), 5)
 
 def update_style(style, shp):
-    if shp.color: style['color'] = "#%02x%02x%02x" % shp.color[:3]
-    if shp.tcolor: style['tcolor'] = "#%02x%02x%02x" % shp.tcolor[:3]
-    if shp.fcolor: style['fcolor'] = "#%02x%02x%02x" % shp.fcolor[:3]
+    if shp.color: style['color'] = "#%.2x%.2x%.2x" % shp.color[:3]
+    if 'text' in shp.dtype: shp.tcolor = shp.color
+    if shp.tcolor: style['tcolor'] = "#%.2x%.2x%.2x" % shp.tcolor[:3]
+    if shp.fcolor: style['fcolor'] = "#%.2x%.2x%.2x" % shp.fcolor[:3]
+
+    # print('===', style['color'], style['tcolor'], style['fcolor'], '===')
     if not shp.size is None: style['size'] = shp.size
     if not shp.font is None: style['font'] = shp.font
     if not shp.lw is None: style['lw'] = shp.lw
@@ -80,12 +83,13 @@ def plot(pts, dc, f, style, **key):
         else:
             for i in pts.body: body.extend(i)
         r = 2
+        # print(sap, '===')
         for i in body:
-            if len(i)>sap:
-                idx = np.linspace(0, len(i), min(len(i), sap), False, dtype=np.uint16)
+            if len(i)>2048:
+                idx = np.linspace(0, len(i), min(len(i), 2048), False, dtype=np.uint16)
                 i = i[idx]
             x, y = f(*i.T[:2])
-            xy = np.array((x,y)).T.ravel().tolist()
+            xy = np.array((x,y)).T.tolist()
             # ps = np.array((x-r, y-r, x+r, y+r)).T.tolist()
             # lst.append(ps)
             plst.append(xy)
@@ -100,6 +104,7 @@ def plot(pts, dc, f, style, **key):
                 dc.create_line(poly, fill=style['color'], width=style['lw'])
         
         if ispoint:
+            # print(pts.dtype, pts.body)
             for poly in plst:
                 for x,y in poly:
                     dc.create_oval(x-r, y-r, x+r, y+r, fill=style['color'], outline=style['color'])
@@ -161,6 +166,8 @@ def draw_rectangle(pts, dc, f, style, **key):
         for rect in lst:
             dc.create_rectangle(*rect, fill=style['fcolor'], outline=style['color'], width=style['lw'])
 
+from time import time
+
 def draw_text(pts, dc, f, style, **key):
     update_style(style, pts)
 
@@ -172,6 +179,7 @@ def draw_text(pts, dc, f, style, **key):
         if not pts.lstyle is None:
             dc.create_oval(x+ox-2, y+oy-2, 4, 4, fill=style['color'], outline=style['color'])
     if pts.dtype == 'texts':
+
         tlst, clst, elst = [], [], []
         x, y = pts.body.T
         ox, oy = pts.offset
@@ -181,12 +189,12 @@ def draw_text(pts, dc, f, style, **key):
         x += ox; y += oy;
         r = x * 0 + 4
         xy = np.array((x+1, y+1)).T.tolist()
+
         for (x,y), text in zip(xy, tlst):
             dc.create_text(x, y, text=text, fill=style['tcolor'], font=(style['font'], style['size']), anchor='nw')
-            if pts.fill:
+            if not pts.lstyle is None:
                 dc.create_oval(x-2, y-2, x+2, y+2, fill=style['color'], outline=style['color'])
-
-
+        
 draw_dic = {'points':plot, 'point':plot, 'line':plot, 
             'polygon':plot, 'lines':plot, 'polygons':plot, 
             'circle':draw_circle, 'circles':draw_circle, 

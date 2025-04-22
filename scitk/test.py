@@ -1,25 +1,18 @@
-import tkinter as tk
 import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
-def say_hello():
-    print("Hello!")
+app = ttk.Window(size=(500, 500))
 
-root = tk.Tk()
-root.geometry("200x100")
+gauge = ttk.Floodgauge(
+    bootstyle='succsess',
+    mask = 'TTT',
+)
 
-# 创建一个PhotoImage对象来加载图标
-icon = tk.PhotoImage(file="./floodfill.gif")
+gauge.pack(fill='y', expand=False, padx=10, pady=10)
 
-menubutton = ttk.Menubutton(root, text="", image=icon, compound="left")
-menu = tk.Menu(menubutton, tearoff=False)
+# autoincrement the gauge
+#gauge.start()
+# increment the value by 10 steps
+#gauge.step(20)
 
-# 添加带图标的菜单项
-menu.add_command(label="", command=say_hello, image=icon, compound="left", activebackground="white")
-menu.add_command(label="", command=say_hello, image=icon, compound="left", activebackground="white")
-menu.add_separator()
-menu.add_command(label="", command=root.quit, image=icon, compound="left", activebackground="white")
-
-menubutton.config(menu=menu)
-menubutton.pack()
-
-root.mainloop()
+app.mainloop()

@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     app = wx.App()
     dic = {'height':'高度', 'm':'米'}
-    pd = ParaDialog(None, 'Test', dic)
+    pd = ParaDialog(None, 'Test')
     pd.init_view(view, para, preview=True, modal=False)
     pd.pack()
     pd.ShowModal()

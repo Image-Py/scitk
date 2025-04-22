@@ -1,5 +1,6 @@
 # import wx, wx.lib.agw.aui as aui
 from .mcanvas import MCanvas
+from ..ttk.notebook import Notebook
 from ..widgets import ToolBar, MenuBar, ParaDialog
 from sciapp import App
 
@@ -74,9 +75,9 @@ class CanvasFrame(ttk.Toplevel): # 继承自 tk.Tk 而不是 tk.Frame
         dialog.bind('commit', on_ok)
         return dialog.show()
 
-class CanvasNoteBook(ttk.Notebook):
-    def __init__(self, parent):
-        super().__init__(parent)
+class CanvasNoteBook(Notebook):
+    def __init__(self, parent, **key):
+        super().__init__(parent, **key)
         self.after(100, self.idle_loop)
 
     def idle_loop(self):
@@ -84,16 +85,14 @@ class CanvasNoteBook(ttk.Notebook):
         self.after(100, self.idle_loop)
         
     def on_idle(self, event):
-        for i in range(self.index('end')):
-            title = self.nametowidget(self.tabs()[i]).image.title
-            if self.tab(i, "text") != title:
-                self.tab(i, text=title)
+        for i in range(self.npage):
+            canvas = self.get(i)
+            title = canvas.image.title
+            if  self.get_title(i) != title:
+                self.set_title(i, title)
 
     def canvas(self, i=None):
-        if i is not None:
-            return self.nametowidget(self.tabs()[i])
-        else:
-            return self.nametowidget(self.select())
+        return self.get(i)
 
     def set_background(self, img):
         self.configure(style='TNotebook', s='lefttab.TNotebook')
@@ -101,13 +100,9 @@ class CanvasNoteBook(ttk.Notebook):
     def add_canvas(self, mcanvas=None):
         if mcanvas is None:
             mcanvas = MCanvas(self)
-            mcanvas.pack(side='top', fill='both', expand=True)
-        self.add(mcanvas, text='Image')
+            # mcanvas.pack(side='top', fill='both', expand=True)
+        self.add(mcanvas, title='Image')
         return mcanvas
-
-    def set_title(self, panel, title):
-        i = self.index(panel)
-        self.tab(i, text=title)
 
     def on_valid(self): 
         pass

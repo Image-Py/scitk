@@ -1,56 +1,97 @@
-import threading, time, wx
+import ttkbootstrap as ttk
 
-class ProgressBar ( wx.Panel ):
-	def __init__( self, parent ):
-		wx.Panel.__init__ ( self, parent, id = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.Size( -1,-1 ), style = wx.TAB_TRAVERSAL )
-		
-		sizer = wx.BoxSizer( wx.HORIZONTAL )
-		
-		self.lab_name = wx.StaticText( self, wx.ID_ANY, u"Process", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.lab_name.Wrap( -1 )
-		sizer.Add( self.lab_name, 0, wx.RIGHT, 5 )
-		
-		self.gau_bar = wx.Gauge( self, wx.ID_ANY, 100, wx.DefaultPosition, wx.DefaultSize, wx.GA_HORIZONTAL )
-		self.gau_bar.SetValue( 0 ) 
-		sizer.Add( self.gau_bar, 0, wx.ALL, 0 )
-		
-		self.progress = []
-		self.cur = 0
-		self.SetSizer( sizer )
-		self.Layout()
-		self.Fit()
-
-		thread = threading.Thread(None, self.hold, ())
-		thread.setDaemon(True)
-		thread.start()
-
-	def SetValue(self, values=[]):
-		self.progress = values
+class ProgressBar ( ttk.Floodgauge ):
+	def __init__(self, parent, mask='no task', **key):
+		super().__init__(parent, mask=mask, **key)
+		self.auto = False
+		self.cursor = 0
+		self.taskcur = 0
+		self.tasks = []
+		self.hold()
+		self.taskhode()
 
 	def hold(self):
-		span, c, t = 30, 0, 0
-		while True:
-			time.sleep(0.1)
-			try:
-				if len(self.progress)==0 and self.IsShown(): self.Hide()
-				if len(self.progress)>0 and not self.IsShown(): self.Show()
-				if len(self.progress)==0: continue
-				t = (t + 1)%span
-				if t==0: self.cur = (self.cur + 1)%len(self.progress)
-				name, f = self.progress[self.cur]
-				wx.CallAfter(self.lab_name.SetLabel, name)
-				if f() is None:
-					c = (c + 5)%200
-					wx.CallAfter(self.gau_bar.SetValue, 100-abs(c-100))
-				else: wx.CallAfter(self.gau_bar.SetValue, f())
-				self.Layout()
-				self.GetParent().Layout()
-			except: pass
+		if self.auto:
+			self.cursor = (self.cursor+5)%200
+			self.configure(value=100-abs(self.cursor-100))
+		self.after(100, self.hold)
+
+	def taskhode(self):
+		if len(self.tasks)>0:
+			self.taskcur = self.taskcur + 1
+			cur = self.taskcur//50%len(self.tasks)
+			text, prog = self.tasks[cur]
+			self.set(prog(), text + ' {}%')
+		self.after(100, self.taskhode)
+		
+	def set(self, value, mask=None):
+		if not mask is None:
+			self.configure(mask=mask)
+		if value is None: 
+			if not self.auto: self.cursor=0
+			self.auto = True
+		else: 
+			self.auto = False
+			self.configure(value=value)
+
+	def task(self, tasks):
+		self.tasks = tasks
+
+class ProgressBar ( ttk.Frame ):
+	def __init__(self, parent, length=100, text='', **key):
+		super().__init__(parent)
+
+		self.lab = ttk.Label(self, text=text+' ')
+		self.lab.pack(side='left')
+
+		self.pro = ttk.Progressbar(self, length=length, **key)
+		self.pro.pack(side='left')
+
+		self.auto = False
+		self.cursor = 0
+		self.taskcur = 0
+		self.tasks = None
+		self.hold()
+		self.taskhode()
+
+	def hold(self):
+		if self.auto:
+			self.cursor = (self.cursor+5)%200
+			self.pro.config(value=100-abs(self.cursor-100))
+		self.after(100, self.hold)
+
+	def taskhode(self):
+		if not self.tasks is None:
+			if len(self.tasks)>0:
+				self.taskcur = self.taskcur + 1
+				cur = self.taskcur//50%len(self.tasks)
+				text, prog = self.tasks[cur]
+				self.set(prog(), text)
+			else: self.set(0, '')
+		self.after(100, self.taskhode)
+		
+	def set(self, value, text=None):
+		if not text is None:
+			self.lab.config(text=text+' ')
+		if value is None: 
+			if not self.auto: self.cursor=0
+			self.auto = True
+		else: 
+			self.auto = False
+			self.pro.config(value=value)
+
+	def task(self, tasks):
+		self.tasks = tasks
 
 if __name__ == '__main__':
-	app = wx.App()
-	frame = wx.Frame(None)
-	pb = ProgressBar(frame)
-	pb.SetValue([('third', lambda : -1)])
-	frame.Show()
-	app.MainLoop()
+	app = ttk.Window(size=(500, 500))
+
+	gauge = ProgressBar(
+		app,
+	    bootstyle='success',
+	    mask='Memory Used',
+	)
+	gauge.pack(fill='y', expand=False, padx=10, pady=10)
+
+	gauge.task([('task1', lambda :None), ('taks2', lambda :10)])
+	app.mainloop()

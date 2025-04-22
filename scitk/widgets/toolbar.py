@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
+from PIL import Image, ImageTk
 
 def make_logo_(obj):
     bmp = None
@@ -30,7 +31,7 @@ def make_logo_(obj):
     return bmp
 
 class ToolBar(ttk.Frame):
-    def __init__(self, parent, orient='x', width=0, *p, **key):
+    def __init__(self, parent, orient='x', width=0, bootstyle='primary', *p, **key):
         super().__init__(parent)
         
         self.orient = orient
@@ -38,6 +39,7 @@ class ToolBar(ttk.Frame):
         self.width = width
         self.toolset = []
         self.curbtn = None
+        self.bootstyle = bootstyle
         self.add_border()
 
     def add_border(self):
@@ -47,18 +49,13 @@ class ToolBar(ttk.Frame):
             side={'x':'top', 'y':'left'}[self.orient], fill=self.orient)
         
     def on_tool(self, tol):
-        print('on tool')
-        return tol.start(self.app)
-        if self.curbtn:
-            self.curbtn.config(background=self.cget("background"))
-        self.curbtn = event.widget
-        event.widget.config(background="light blue")
+        return tol().start(self.app)
 
     def on_config(self, tol):
-        if not hasattr(tol, 'view'):
-            return
+        if not hasattr(tol, 'view'): return
         self.app.show_para(tol.title, tol.para, tol.view)
-        tol.config()
+        print(tol)
+        # tol.config()
 
     def on_help(self, tol):
         pass
@@ -68,12 +65,12 @@ class ToolBar(ttk.Frame):
             self.app.info(tol.title)
 
     def bind(self, btn, tol):
-        obj = tol()
         # btn.config(background=self.cget("background"))
-        btn.bind("<Button-1>", lambda e, obj=obj: self.on_tool(obj))
-        btn.bind("<Button-3>", lambda e, obj=obj: self.on_help(obj))
-        btn.bind("<Enter>", lambda e, obj=obj: self.on_info(obj))
-        btn.bind("<Double-Button-1>", lambda e, obj=obj: self.on_config(obj))
+        # btn.bind("<Button-1>", lambda e, obj=obj: self.on_tool(obj))
+        btn.config(command=lambda obj=tol: self.on_tool(obj))
+        btn.bind("<Button-3>", lambda e, obj=tol: self.on_help(obj))
+        btn.bind("<Enter>", lambda e, obj=tol: self.on_info(obj))
+        btn.bind("<Double-Button-1>", lambda e, obj=tol: self.on_config(obj))
 
     def clear(self):
         for child in self.winfo_children():
@@ -87,34 +84,49 @@ class ToolBar(ttk.Frame):
                 imgdic[logo] = tk.PhotoImage(file=logo)
             text, img = '', imgdic[logo]
         else: text, img = logo, None
-        btn = ttk.Button(self, bootstyle='outline-info',
+        btn = ttk.Button(self, bootstyle='outline-'+self.bootstyle,
             width=self.width, text=text, image=img,
             compound='center', padding=5)
         self.bind(btn, tool)
         btn.pack(side=side, padx=2, pady=5)
-
+        
     def add_tools(self, name, tools, fixed=True, imgdic={}):
         side = {'x':'left', 'y':'top'}[self.orient]
         if not fixed:
             self.toolset.append((name, []))
-        for logo, tool in tools:
-            if '.' in logo:
-                if not logo in imgdic:
-                    imgdic[logo] = tk.PhotoImage(file=logo)
-                text, img = '', imgdic[logo]
-            else: text, img = logo, None
-            btn = ttk.Button(self, bootstyle='outline-info',
+        
+        panel = ttk.Frame(self, bootstyle=self.bootstyle)
+        panel.pack(side={'x':'left', 'y':'top'}[self.orient], padx=3, pady=3)
+        
+        container = ttk.Frame(panel)
+        container.pack(side='top', fill='x', padx=1, pady=(1,0))
+        
+        lab = ttk.Label(panel, text=name, anchor='center', bootstyle='inverse-'+self.bootstyle)
+        lab.pack(side='bottom', fill='x', padx=1, pady=(0,1))
+        
+        for text, img, tool in tools:
+            if not img is None:
+                if not img in imgdic:
+                    subimg = Image.open(img).resize((24,24))
+                    imgdic[img] = ImageTk.PhotoImage(subimg)
+                text, img = '', imgdic[img]
+            btn = ttk.Button(container, bootstyle='outline-'+self.bootstyle,
                 width=self.width, text=text, image=img,
-                compound='center', padding=5)
+                compound='center', padding=(3,7)[img is None])
             self.bind(btn, tool)
-            btn.pack(side=side, padx=2, pady=5)
+            btn.pack(side=side, padx=3, pady=3)
             if not fixed:
                 self.toolset[-1][1].append(btn)
-        if fixed:
-            orient = {'x':'vertical', 'y':'horizontal'}[self.orient]
-            line = ttk.Separator(self, orient=orient)
-            line.pack(side=side, fill={'x':'y', 'y':'x'}[self.orient])
+        
+        #if fixed:
+            #orient = {'x':'vertical', 'y':'horizontal'}[self.orient]
+            #line = ttk.Separator(self, orient=orient)
+            #line.pack(side=side, fill={'x':'y', 'y':'x'}[self.orient])
 
+    def add_toolset(self, tools):
+        for setname, logo, body in tools:
+            self.add_tools(setname, body)
+            
     def active_set(self, name):
         for n, tools in self.toolset:
             for btn in tools:
@@ -126,7 +138,7 @@ class ToolBar(ttk.Frame):
 
     def add_pop(self, logo, default):
         side = {'x':'right', 'y':'bottom'}[self.orient]
-        btn = ttk.Button(self, bootstyle='outline-info',
+        btn = ttk.Button(self, bootstyle='outline',
             text=logo, padding=5, width=self.width)
         btn.config(command=lambda: self.menu_drop(btn))
         btn.pack(side=side, padx=2, pady=5)
@@ -142,12 +154,14 @@ class ToolBar(ttk.Frame):
 if __name__ == '__main__':
     path = '../floodfill.gif'
     app = ttk.Window('ToolBar')
+    # style = ttk.Style(theme='darkly')
+    
     frame = app
     tool = ToolBar(frame, orient='x', width=0)
     # path = 'C:/Users/54631/Documents/projects/imagepy2/fucai/imgs/_help.png'
-    tool.add_tools('A', [(path, print)] * 3, True)
-    tool.add_tools('B', [('Basic', print)] * 3, False)
-    tool.add_tools('C', [('Come', print)] * 3, False)
-    tool.add_pop('P', 'C')
+    tool.add_tools('A', [('Image', './open.png', print)] * 3, True)
+    tool.add_tools('B', [('Basic', None, print)] * 3, True)
+    tool.add_tools('C', [('Come', None, print)] * 3, True)
+    # tool.add_pop('P', 'C')
     tool.pack(fill='x', side='top')
     app.mainloop()

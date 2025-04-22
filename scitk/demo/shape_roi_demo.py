@@ -13,8 +13,9 @@ rectangles = {'type':'rectangles', 'body':[(100,100,80,50),(200,200,80,100)]}
 layer = {'type':'layer', 'num':-1, 'color':(0,0,255), 'fill':False, 'body':[rectangles, ellipse]}
 
 if __name__ == '__main__':
-    app = tk.Tk()
+    app = ttk.Window()
     app.withdraw()
+    ttk.Style('cyborg')
     frame = CanvasFrame(app)
     frame.canvas.set_img(camera())
     roi = ROI([Line([(0,0),(100,100),(300,500)])])
