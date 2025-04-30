@@ -52,13 +52,13 @@ class ToolBar(ttk.Frame):
         return tol().start(self.app)
 
     def on_config(self, tol):
-        if not hasattr(tol, 'view'): return
+        # if not hasattr(tol, 'view'): return
+        if tol.view is None: return
         self.app.show_para(tol.title, tol.para, tol.view)
         print(tol)
         # tol.config()
 
-    def on_help(self, tol):
-        pass
+    def on_help(self, tol): pass
 
     def on_info(self, tol):
         if hasattr(self.app, 'info'):

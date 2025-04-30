@@ -5,8 +5,8 @@ from .paradialog import ParaDialog, get_para
 from .histpanel import HistPanel
 from .progressbar import ProgressBar
 from .normal import *
-from .toolbar import ToolBar
 from .menubar import MenuBar
+from .toolbar import ToolBar
 # from .ribbonbar import RibbonBar
 # from .viewport import ViewPort
 # from .choicebook import ChoiceBook

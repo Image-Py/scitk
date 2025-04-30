@@ -53,7 +53,7 @@ class Canvas (tk.Canvas):
         x, y = self.to_data_coor(px, py)
         obj, tol = self.get_obj_tol()
         btn, tool = me.num, self.tool or tol
-        ld, rd, md = me.state&0x100>0, me.state&0x200>0, me.state&0x400>0
+        ld, md, rd = me.state&0x100>0, me.state&0x200>0, me.state&0x400>0
         # print(ld, rd, md)
         sta = [me.state&0x20000>0, me.state&0x0004>0, me.state&0x0001>0]
         others = {'alt':sta[0], 'ctrl':sta[1],
@@ -68,6 +68,7 @@ class Canvas (tk.Canvas):
             tool.mouse_up(obj, x, y, btn, **others)
         if btn == '??':
             b = [0, ld, md, rd].index(True) if True in (ld, md, rd) else None
+            # print(b)
             tool.mouse_move(obj, x, y, b, **others)
 
         wheel = np.sign(me.delta)
@@ -98,7 +99,7 @@ class Canvas (tk.Canvas):
         else: i = min((c-a)*0.9/oriw, (d-b)*0.9/orih)
         self.zoom(i, 0, 0)
         lay(self.winbox, self.conbox)
-        # self.update()
+        self.update() # why note it?
 
     def update_box(self):
         box = [1e10, 1e10, -1e10, -1e10]

@@ -31,7 +31,7 @@ class ScaleTool(ImageTool):
     def mouse_down(self, ips, x, y, btn, **key):
         if btn==2:
             self.ox, self.oy = key['canvas'].to_panel_coor(x,y)
-            print(self.ox, self.oy)
+
         #print 'down', self.ox, self.oy
         if btn==1: key['canvas'].zoomout(x, y, 'data')
         if btn==3: key['canvas'].zoomin(x, y, 'data')

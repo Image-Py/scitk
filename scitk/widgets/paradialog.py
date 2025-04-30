@@ -156,7 +156,6 @@ class ParaDialog(ttk.Toplevel):
         if self.modal:
             self.grab_set()
             self.wait_window()
-            print(self.status)
             return self.status
         else:
             self.deiconify()
